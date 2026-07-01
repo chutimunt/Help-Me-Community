@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HelpMe Community — ระบบแจ้งเหตุฉุกเฉิน</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --navy: #0F172A; --navy-mid: #1E293B; --navy-light: #334155;
+    --amber: #F59E0B; --amber-light: #FDE68A;
+    --coral: #EF4444; --teal: #0EA5E9; --emerald: #10B981;
+    --slate: #94A3B8; --white: #F8FAFC; --card: #1E293B;
+    --border: rgba(148,163,184,0.15); --radius: 14px; --radius-sm: 8px;
+  }
+  body { font-family:'Sarabun',sans-serif; background:var(--navy); color:var(--white); min-height:100vh; display:flex; flex-direction:column; }
+
+  /* ── LOGIN SCREEN ── */
+  #loginScreen {
+    position: fixed; inset: 0; z-index: 999;
+    background: var(--navy);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  #loginScreen.hidden { display: none; }
+
+  .login-wrap {
+    width: 100%; max-width: 420px;
+  }
+  .login-hero {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+  .login-beacon {
+    width: 64px; height: 64px;
+    background: var(--amber);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px;
+    margin: 0 auto 16px;
+    position: relative;
+  }
+  .login-beacon::after {
+    content: '';
+    position: absolute; inset: -6px;
+    border-radius: 50%;
+    border: 2px solid var(--amber);
+    animation: pulse 2s ease-out infinite;
+    opacity: 0;
+  }
+  @keyframes pulse { 0%{transform:scale(0.9);opacity:.8} 100%{transform:scale(1.7);opacity:0} }
+  .login-title { font-size: 1.8rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 4px; }
+  .login-title span { color: var(--amber); }
+  .login-sub { color: var(--slate); font-size: 0.88rem; }
+
+  .login-card {
+    background: var(--navy-mid);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px;
+  }
+
+  /* role selector */
+  .role-selector {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  .role-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    padding: 12px 8px;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--border);
+    background: transparent;
+    color: var(--slate);
+    font-family: 'Sarabun',sans-serif;
+    font-size: 0.8rem; font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .role-btn .role-emoji { font-size: 1.4rem; }
+  .role-btn.active {
+    border-color: var(--amber);
+    background: rgba(245,158,11,0.1);
+    color: var(--amber);
+  }
+  .role-btn:hover:not(.active) { border-color: rgba(148,163,184,0.4); color: var(--white); }
+
+  .login-divider {
+    font-size: 0.72rem; font-weight: 700; color: var(--slate);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 16px;
+  }
+
+  .login-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .login-field label { font-size: 0.78rem; font-weight: 700; color: var(--slate); letter-spacing: 0.04em; }
+  .login-input-wrap { position: relative; }
+  .login-input-wrap .input-icon {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    font-size: 1rem; pointer-events: none;
+  }
+  .login-field input {
+    width: 100%;
+    background: var(--navy); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--white);
+    font-family: 'Sarabun',sans-serif; font-size: 0.9rem;
+    padding: 11px 14px 11px 38px;
+    outline: none; transition: border-color 0.2s;
+  }
+  .login-field input:focus { border-color: var(--amber); }
+  .login-field input[type="password"] { letter-spacing: 0.1em; }
+
+  .pass-toggle {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: var(--slate); cursor: pointer;
+    font-size: 1rem; padding: 0;
+  }
+
+  .login-hint {
+    background: rgba(245,158,11,0.08);
+    border: 1px solid rgba(245,158,11,0.2);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    margin-bottom: 20px;
+    font-size: 0.78rem;
+    color: var(--slate);
+    line-height: 1.6;
+  }
+  .login-hint strong { color: var(--amber); }
+
+  .login-error {
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.3);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-size: 0.83rem;
+    color: #fca5a5;
+    display: none;
+  }
+  .login-error.show { display: block; }
+
+  .btn-login {
+    width: 100%; padding: 13px;
+    background: var(--amber); color: var(--navy);
+    border: none; border-radius: var(--radius-sm);
+    font-family: 'Sarabun',sans-serif; font-size: 1rem; font-weight: 800;
+    cursor: pointer; transition: all 0.18s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-login:hover { background: #fbbf24; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(245,158,11,0.35); }
+  .btn-login:active { transform: none; }
+  .btn-login.loading { opacity: 0.7; pointer-events: none; }
+
+  /* spinner */
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(15,23,42,0.3);
+    border-top-color: var(--navy);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    display: none;
+  }
+  .btn-login.loading .spinner { display: block; }
+  .btn-login.loading .btn-text { display: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── TOP NAV ── */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 28px; height: 64px;
+    background: var(--navy-mid);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { display:flex; align-items:center; gap:10px; font-weight:800; font-size:1.25rem; letter-spacing:-0.02em; }
+  .logo-beacon {
+    width:32px; height:32px; background:var(--amber); border-radius:50%;
+    position:relative; display:flex; align-items:center; justify-content:center; font-size:16px;
+  }
+  .logo-beacon::after {
+    content:''; position:absolute; inset:-4px; border-radius:50%;
+    border:2px solid var(--amber); animation:pulse 2s ease-out infinite; opacity:0;
+  }
+  .logo span { color:var(--amber); }
+
+  /* user info in topbar */
+  .topbar-right { display:flex; align-items:center; gap:12px; }
+  .user-chip {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--navy); border: 1px solid var(--border);
+    border-radius: 999px; padding: 6px 14px 6px 8px;
+    font-size: 0.82rem; font-weight: 600;
+  }
+  .user-avatar {
+    width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 800; color: var(--navy);
+  }
+  .user-role-badge {
+    font-size: 0.7rem; font-weight: 700;
+    padding: 2px 8px; border-radius: 999px;
+  }
+  .role-citizen { background: rgba(245,158,11,0.15); color: var(--amber); }
+  .role-officer { background: rgba(14,165,233,0.15); color: var(--teal); }
+  .role-admin   { background: rgba(239,68,68,0.15);  color: var(--coral); }
+
+  .btn-logout {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border); background: transparent;
+    color: var(--slate); font-family:'Sarabun',sans-serif;
+    font-size: 0.8rem; font-weight: 600; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-logout:hover { border-color: var(--coral); color: var(--coral); }
+
+  /* ── LAYOUT ── */
+  .app-body { display:flex; flex:1; min-height:calc(100vh - 64px); }
+  .sidebar { width:240px; background:var(--navy-mid); border-right:1px solid var(--border); padding:24px 12px; flex-shrink:0; }
+  .nav-item {
+    display:flex; align-items:center; gap:10px; padding:10px 12px;
+    border-radius:var(--radius-sm); cursor:pointer; font-size:0.9rem; font-weight:500;
+    color:var(--slate); transition:all 0.15s; margin-bottom:2px;
+    border:none; background:none; width:100%; text-align:left; font-family:'Sarabun',sans-serif;
+  }
+  .nav-item.active { background:rgba(245,158,11,0.12); color:var(--amber); }
+  .nav-item:hover:not(.active) { background:rgba(255,255,255,0.05); color:var(--white); }
+  .nav-icon { font-size:1.1rem; width:20px; text-align:center; }
+  .badge { margin-left:auto; background:var(--coral); color:#fff; font-size:0.7rem; font-weight:700; padding:2px 7px; border-radius:20px; min-width:20px; text-align:center; }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+  .sidebar-user { padding: 10px 12px; display:flex; align-items:center; gap:10px; }
+  .sidebar-avatar { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:800; color:var(--navy); flex-shrink:0; }
+  .sidebar-name { font-size:0.82rem; font-weight:700; }
+  .sidebar-role { font-size:0.72rem; color:var(--slate); }
+
+  .main { flex:1; overflow-y:auto; }
+  .view { display:none; padding:32px; }
+  .view.active { display:block; }
+  .page-title { font-size:1.6rem; font-weight:800; margin-bottom:6px; letter-spacing:-0.02em; }
+  .page-sub { color:var(--slate); font-size:0.9rem; margin-bottom:28px; }
+
+  /* ── FORM ── */
+  .form-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:28px; max-width:680px; }
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  .form-group { display:flex; flex-direction:column; gap:6px; }
+  .form-group.full { grid-column:1/-1; }
+  label { font-size:0.82rem; font-weight:600; color:var(--slate); letter-spacing:0.03em; }
+  input[type="text"], select, textarea {
+    background:var(--navy); border:1px solid var(--border); border-radius:var(--radius-sm);
+    color:var(--white); font-family:'Sarabun',sans-serif; font-size:0.9rem;
+    padding:10px 14px; outline:none; transition:border-color 0.2s; width:100%;
+  }
+  input[type="text"]:focus, select:focus, textarea:focus { border-color:var(--amber); }
+  select option { background:var(--navy-mid); }
+  textarea { resize:vertical; min-height:80px; }
+
+  .type-chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .type-chip {
+    display:flex; align-items:center; gap:6px; padding:8px 16px;
+    border-radius:999px; border:1.5px solid var(--border);
+    background:transparent; color:var(--slate);
+    font-family:'Sarabun',sans-serif; font-size:0.85rem; font-weight:600;
+    cursor:pointer; transition:all 0.15s;
+  }
+  .type-chip.selected { border-color:var(--amber); background:rgba(245,158,11,0.12); color:var(--amber); }
+  .type-chip:hover:not(.selected) { border-color:rgba(148,163,184,0.4); color:var(--white); }
+
+  .upload-zone {
+    border:2px dashed var(--border); border-radius:var(--radius-sm);
+    padding:24px; text-align:center; cursor:pointer;
+    transition:border-color 0.2s; position:relative; overflow:hidden;
+  }
+  .upload-zone:hover { border-color:var(--amber); }
+  .upload-zone input[type="file"] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+  .upload-zone .upload-icon { font-size:2rem; margin-bottom:8px; }
+  .upload-zone p { color:var(--slate); font-size:0.85rem; }
+  .upload-zone p strong { color:var(--amber); }
+  .upload-previews { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .upload-preview-img { width:72px; height:72px; object-fit:cover; border-radius:6px; border:1px solid var(--border); }
+
+  .btn {
+    display:inline-flex; align-items:center; gap:8px; padding:11px 24px;
+    border-radius:var(--radius-sm); border:none;
+    font-family:'Sarabun',sans-serif; font-size:0.9rem; font-weight:700;
+    cursor:pointer; transition:all 0.18s;
+  }
+  .btn-primary { background:var(--amber); color:var(--navy); }
+  .btn-primary:hover { background:#fbbf24; transform:translateY(-1px); box-shadow:0 4px 20px rgba(245,158,11,0.35); }
+  .btn-ghost { background:transparent; border:1px solid var(--border); color:var(--slate); }
+  .btn-ghost:hover { border-color:var(--slate); color:var(--white); }
+  .btn-sm { padding:6px 14px; font-size:0.8rem; }
+
+  /* ── REPORT LIST ── */
+  .reports-list { display:flex; flex-direction:column; gap:12px; max-width:800px; }
+  .report-card {
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+    padding:18px 20px; display:flex; align-items:flex-start; gap:16px; transition:border-color 0.2s; cursor:pointer;
+  }
+  .report-card:hover { border-color:rgba(148,163,184,0.3); }
+  .report-type-icon { width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.4rem; flex-shrink:0; }
+  .report-info { flex:1; }
+  .report-title { font-weight:700; font-size:0.95rem; margin-bottom:4px; }
+  .report-meta { color:var(--slate); font-size:0.8rem; margin-bottom:10px; }
+  .report-progress { display:flex; align-items:center; gap:10px; }
+  .progress-steps { display:flex; gap:4px; align-items:center; }
+  .progress-step { width:28px; height:4px; border-radius:2px; background:var(--navy-light); }
+  .progress-step.done { background:var(--emerald); }
+  .progress-step.active { background:var(--amber); }
+  .status-pill { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; font-size:0.75rem; font-weight:700; }
+  .status-pending { background:rgba(245,158,11,0.12); color:var(--amber); }
+  .status-inprogress { background:rgba(14,165,233,0.12); color:var(--teal); }
+  .status-resolved { background:rgba(16,185,129,0.12); color:var(--emerald); }
+  .status-dot { width:6px; height:6px; border-radius:50%; background:currentColor; }
+
+  /* ── OFFICER ── */
+  .search-bar-wrapper { display:flex; gap:10px; margin-bottom:20px; max-width:800px; }
+  .search-bar-wrapper input { flex:1; }
+  .filter-chips { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+  .filter-chip {
+    padding:5px 14px; border-radius:999px; border:1px solid var(--border);
+    background:transparent; color:var(--slate);
+    font-family:'Sarabun',sans-serif; font-size:0.8rem; font-weight:600;
+    cursor:pointer; transition:all 0.15s;
+  }
+  .filter-chip.active { border-color:var(--amber); color:var(--amber); background:rgba(245,158,11,0.1); }
+  .filter-chip:hover:not(.active) { color:var(--white); }
+
+  .officer-report-card {
+    background:var(--card); border:1px solid var(--border);
+    border-left:4px solid transparent; border-radius:var(--radius);
+    padding:16px 20px; display:flex; align-items:center; gap:16px;
+    margin-bottom:10px; max-width:900px;
+  }
+  .officer-report-card.pending { border-left-color:var(--amber); }
+  .officer-report-card.inprogress { border-left-color:var(--teal); }
+  .officer-report-card.resolved { border-left-color:var(--emerald); }
+  .officer-info { flex:1; }
+  .officer-title { font-weight:700; font-size:0.92rem; }
+  .officer-meta { color:var(--slate); font-size:0.78rem; margin-top:2px; }
+  .officer-actions { display:flex; gap:8px; align-items:center; }
+  select.status-select {
+    background:var(--navy); border:1px solid var(--border); border-radius:var(--radius-sm);
+    color:var(--white); font-family:'Sarabun',sans-serif; font-size:0.8rem; padding:6px 10px; cursor:pointer;
+  }
+
+  /* ── ADMIN DASHBOARD ── */
+  .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:28px; }
+  .stat-card {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:var(--radius); padding:20px 22px;
+    position:relative; overflow:hidden;
+  }
+  .stat-card::before {
+    content:''; position:absolute; top:0; right:0;
+    width:80px; height:80px; border-radius:50%;
+    transform:translate(20px,-30px); opacity:0.08;
+  }
+  .stat-card.total::before { background:var(--white); }
+  .stat-card.pending::before { background:var(--amber); }
+  .stat-card.inprogress::before { background:var(--teal); }
+  .stat-card.resolved::before { background:var(--emerald); }
+  .stat-label { font-size:0.78rem; font-weight:600; color:var(--slate); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px; }
+  .stat-number { font-size:2.4rem; font-weight:800; line-height:1; margin-bottom:6px; letter-spacing:-0.03em; }
+  .stat-card.total .stat-number { color:var(--white); }
+  .stat-card.pending .stat-number { color:var(--amber); }
+  .stat-card.inprogress .stat-number { color:var(--teal); }
+  .stat-card.resolved .stat-number { color:var(--emerald); }
+  .stat-sub { color:var(--slate); font-size:0.78rem; }
+
+  .charts-grid { display:grid; grid-template-columns:1fr 1.4fr; gap:20px; margin-bottom:28px; }
+  .chart-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:22px; }
+  .chart-title { font-size:0.88rem; font-weight:700; color:var(--slate); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:16px; }
+  .chart-wrap { position:relative; height:220px; }
+
+  /* ── MODAL ── */
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:200; display:none; align-items:center; justify-content:center; }
+  .modal-overlay.open { display:flex; }
+  .modal { background:var(--navy-mid); border:1px solid var(--border); border-radius:var(--radius); padding:28px; max-width:500px; width:90%; }
+  .modal-title { font-size:1.1rem; font-weight:800; margin-bottom:16px; }
+  .modal-img { width:100%; border-radius:var(--radius-sm); margin-bottom:14px; object-fit:cover; max-height:200px; }
+  .detail-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border); font-size:0.85rem; }
+  .detail-row:last-child { border:none; }
+  .detail-key { color:var(--slate); }
+
+  /* ── TOAST ── */
+  .toast-container { position:fixed; bottom:24px; right:24px; z-index:999; display:flex; flex-direction:column; gap:8px; }
+  .toast {
+    background:var(--navy-mid); border:1px solid var(--border); border-radius:var(--radius-sm);
+    padding:12px 18px; font-size:0.85rem; font-weight:600;
+    display:flex; align-items:center; gap:10px;
+    animation:slideIn 0.3s ease; box-shadow:0 8px 32px rgba(0,0,0,0.4);
+  }
+  @keyframes slideIn { from{transform:translateX(100px);opacity:0} to{transform:none;opacity:1} }
+  @keyframes slideOut { from{transform:none;opacity:1} to{transform:translateX(100px);opacity:0} }
+  .toast.success { border-left:3px solid var(--emerald); }
+  .toast.info { border-left:3px solid var(--teal); }
+  .toast.error { border-left:3px solid var(--coral); }
+
+  .empty-state { text-align:center; padding:60px 20px; color:var(--slate); }
+  .empty-state .icon { font-size:3rem; margin-bottom:12px; }
+  .empty-state h3 { font-size:1rem; font-weight:700; color:var(--white); margin-bottom:4px; }
+
+  @media(max-width:768px) {
+    .sidebar { display:none; }
+    .stats-grid { grid-template-columns:1fr 1fr; }
+    .charts-grid { grid-template-columns:1fr; }
+    .form-grid { grid-template-columns:1fr; }
+    .role-selector { grid-template-columns:repeat(3,1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN SCREEN ══ -->
+<div id="loginScreen">
+  <div class="login-wrap">
+    <div class="login-hero">
+      <div class="login-beacon">🚨</div>
+      <div class="login-title"><span>Help</span>Me Community</div>
+      <div class="login-sub">ระบบแจ้งเหตุฉุกเฉินในชุมชน · กรุณาเข้าสู่ระบบ</div>
+    </div>
+    <div class="login-card">
+      <div class="login-divider">เลือกประเภทบัญชี</div>
+      <div class="role-selector">
+        <button class="role-btn active" onclick="selectLoginRole('citizen',this)">
+          <span class="role-emoji">👤</span>ประชาชน
+        </button>
+        <button class="role-btn" onclick="selectLoginRole('officer',this)">
+          <span class="role-emoji">👮</span>เจ้าหน้าที่
+        </button>
+        <button class="role-btn" onclick="selectLoginRole('admin',this)">
+          <span class="role-emoji">🛡️</span>แอดมิน
+        </button>
+      </div>
+
+      <div class="login-field">
+        <label>ชื่อผู้ใช้</label>
+        <div class="login-input-wrap">
+          <span class="input-icon"></span>
+          <input type="text" id="loginUser" placeholder="      กรอกชื่อผู้ใช้" autocomplete="username">
+        </div>
+      </div>
+      <div class="login-field">
+        <label>รหัสผ่าน</label>
+        <div class="login-input-wrap">
+          <span class="input-icon"></span>
+          <input type="password" id="loginPass" placeholder="กรอกรหัสผ่าน" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+          <button class="pass-toggle" onclick="togglePass()" id="passToggleBtn" title="แสดง/ซ่อนรหัสผ่าน">👁️</button>
+        </div>
+      </div>
+
+      <div class="login-hint" id="loginHint">
+        <strong>ประชาชน</strong> · user: <strong>user</strong> / pass: <strong>1234</strong>
+      </div>
+      <div class="login-error" id="loginError">❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</div>
+
+      <button class="btn-login" id="loginBtn" onclick="doLogin()">
+        <div class="spinner"></div>
+        <span class="btn-text">🔑 เข้าสู่ระบบ</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MAIN APP ══ -->
+<div id="appShell" style="display:none;flex-direction:column;flex:1">
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-beacon">🚨</div>
+    <span>Help</span>Me Community
+  </div>
+  <div class="topbar-right">
+    <div class="user-chip" id="userChip"></div>
+    <button class="btn-logout" onclick="doLogout()">🚪 ออกจากระบบ</button>
+  </div>
+</div>
+
+<div class="app-body">
+  <div class="sidebar" id="sidebar" style="display:flex;flex-direction:column;"></div>
+  <div class="main">
+
+    <!-- CITIZEN -->
+    <div class="view active" id="view-report-form">
+      <div class="page-title">แจ้งเหตุฉุกเฉิน</div>
+      <div class="page-sub">กรอกข้อมูลให้ครบถ้วน เพื่อให้เจ้าหน้าที่ดำเนินการได้รวดเร็ว</div>
+      <div class="form-card">
+        <div class="form-grid">
+          <div class="form-group full">
+            <label>ประเภทเหตุการณ์</label>
+            <div class="type-chips">
+              <button class="type-chip" onclick="selectType(this,'ไฟดับ')">🔌 ไฟดับ</button>
+              <button class="type-chip" onclick="selectType(this,'ถนนชำรุด')">🛣️ ถนนชำรุด</button>
+              <button class="type-chip" onclick="selectType(this,'น้ำท่วม')">🌊 น้ำท่วม</button>
+              <button class="type-chip" onclick="selectType(this,'อุบัติเหตุ')">🚗 อุบัติเหตุ</button>
+              <button class="type-chip" onclick="selectType(this,'อื่นๆ')">📌 อื่นๆ</button>
+            </div>
+          </div>
+          <div class="form-group full"><label>ชื่อผู้แจ้ง</label><input type="text" id="f-name" placeholder="ระบุชื่อ-นามสกุล"></div>
+          <div class="form-group"><label>เบอร์โทรศัพท์</label><input type="text" id="f-phone" placeholder="08x-xxx-xxxx"></div>
+          <div class="form-group"><label>ที่อยู่ / ตำแหน่ง</label><input type="text" id="f-location" placeholder="ถนน / ซอย / หมู่บ้าน"></div>
+          <div class="form-group full"><label>รายละเอียดเหตุการณ์</label><textarea id="f-detail" placeholder="อธิบายสถานการณ์..."></textarea></div>
+          <div class="form-group full">
+            <label>อัปโหลดรูปภาพ (ถ้ามี)</label>
+            <div class="upload-zone">
+              <input type="file" id="imageUpload" accept="image/*" multiple onchange="handleImages(event)">
+              <div class="upload-icon">📷</div>
+              <p><strong>คลิกเพื่อเลือกรูป</strong> หรือลากวางไฟล์ที่นี่</p>
+              <p>รองรับ JPG, PNG, GIF</p>
+            </div>
+            <div class="upload-previews" id="uploadPreviews"></div>
+          </div>
+        </div>
+        <div style="margin-top:22px;display:flex;gap:10px;">
+          <button class="btn btn-primary" onclick="submitReport()">📨 ส่งแจ้งเหตุ</button>
+          <button class="btn btn-ghost" onclick="resetForm()">รีเซ็ต</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="view" id="view-track">
+      <div class="page-title">ติดตามสถานะ</div>
+      <div class="page-sub">ดูความคืบหน้าของเหตุที่แจ้งไว้</div>
+      <div class="reports-list" id="citizenReportList"></div>
+    </div>
+
+    <!-- OFFICER -->
+    <div class="view" id="view-officer-inbox">
+      <div class="page-title">กล่องเหตุการณ์</div>
+      <div class="page-sub">รับเรื่องและอัปเดตสถานะการดำเนินการ</div>
+      <div class="search-bar-wrapper">
+        <input type="text" id="officerSearch" placeholder="🔍  ค้นหาชื่อ, ที่อยู่, หรือประเภท..." oninput="renderOfficerView()">
+      </div>
+      <div class="filter-chips">
+        <button class="filter-chip active" onclick="setOfficerFilter('all',this)">ทั้งหมด</button>
+        <button class="filter-chip" onclick="setOfficerFilter('รอดำเนินการ',this)">🟡 รอดำเนินการ</button>
+        <button class="filter-chip" onclick="setOfficerFilter('กำลังดำเนินการ',this)">🔵 กำลังดำเนินการ</button>
+        <button class="filter-chip" onclick="setOfficerFilter('แก้ไขแล้ว',this)">🟢 แก้ไขแล้ว</button>
+      </div>
+      <div id="officerList"></div>
+    </div>
+
+    <!-- ADMIN -->
+    <div class="view" id="view-admin-dashboard">
+      <div class="page-title">Dashboard</div>
+      <div class="page-sub">ภาพรวมสถานการณ์ฉุกเฉินในชุมชน</div>
+      <div class="stats-grid" id="statsGrid"></div>
+      <div class="charts-grid">
+        <div class="chart-card"><div class="chart-title">ประเภทเหตุการณ์</div><div class="chart-wrap"><canvas id="typeChart"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">จำนวนเหตุรายเดือน</div><div class="chart-wrap"><canvas id="monthChart"></canvas></div></div>
+      </div>
+      <div class="chart-card" style="max-width:900px">
+        <div class="chart-title">รายการล่าสุด</div>
+        <div id="adminRecentList" style="margin-top:8px;"></div>
+      </div>
+    </div>
+
+    <div class="view" id="view-admin-all">
+      <div class="page-title">เหตุทั้งหมด</div>
+      <div class="page-sub">จัดการและเปลี่ยนสถานะเหตุการณ์</div>
+      <div class="search-bar-wrapper">
+        <input type="text" id="adminSearch" placeholder="🔍  ค้นหา..." oninput="renderAdminAll()">
+      </div>
+      <div id="adminAllList"></div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modalContent"></div>
+</div>
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ══════════ ACCOUNTS ══════════
+const ACCOUNTS = {
+  citizen: [
+    { username:'user',    password:'1234', name:'สมศรี หมีหาย',   avatar:'สห', color:'#F59E0B' },
+    { username:'malee',   password:'1234', name:'มาลี สุขใจ',   avatar:'มล', color:'#F59E0B' },
+  ],
+  officer: [
+    { username:'officer', password:'officer123', name:'ด.ต.สโม๊ย ขโม๊ยมา',  avatar:'สม', color:'#0EA5E9' },
+    { username:'nida',    password:'officer123', name:'จ.ส.ต.นิดา ทองดี', avatar:'นด', color:'#0EA5E9' },
+  ],
+  admin: [
+    { username:'admin',   password:'admin999', name:'ผู้ดูแลระบบ',  avatar:'AD', color:'#EF4444' },
+  ],
+};
+
+const HINT_MAP = {
+  citizen: 'user: <strong>user</strong> / pass: <strong>1234</strong>',
+  officer: 'user: <strong>officer</strong> / pass: <strong>officer123</strong>',
+  admin:   'user: <strong>admin</strong> / pass: <strong>admin999</strong>',
+};
+const ROLE_LABEL = { citizen:'ประชาชน', officer:'เจ้าหน้าที่', admin:'แอดมิน' };
+
+let loginRole = 'citizen';
+let currentUser = null;
+
+function selectLoginRole(role, el) {
+  loginRole = role;
+  document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('loginHint').innerHTML =
+    `<strong>${ROLE_LABEL[role]}</strong> · ${HINT_MAP[role]}`;
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginError').classList.remove('show');
+}
+
+function togglePass() {
+  const inp = document.getElementById('loginPass');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginError');
+  errEl.classList.remove('show');
+  const match = ACCOUNTS[loginRole].find(a => a.username === u && a.password === p);
+  if (!match) { errEl.classList.add('show'); return; }
+
+  const btn = document.getElementById('loginBtn');
+  btn.classList.add('loading');
+  setTimeout(() => {
+    btn.classList.remove('loading');
+    currentUser = { ...match, role: loginRole };
+    document.getElementById('loginScreen').classList.add('hidden');
+    const app = document.getElementById('appShell');
+    app.style.display = 'flex';
+    initApp();
+  }, 800);
+}
+
+function doLogout() {
+  currentUser = null;
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('appShell').style.display = 'none';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginError').classList.remove('show');
+  typeChartInst = null; monthChartInst = null;
+  showToast('👋 ออกจากระบบแล้ว', 'info');
+}
+
+function initApp() {
+  // update user chip in topbar
+  const roleCls = { citizen:'role-citizen', officer:'role-officer', admin:'role-admin' };
+  document.getElementById('userChip').innerHTML = `
+    <div class="user-avatar" style="background:${currentUser.color}">${currentUser.avatar}</div>
+    <span>${currentUser.name}</span>
+    <span class="user-role-badge ${roleCls[currentUser.role]}">${ROLE_LABEL[currentUser.role]}</span>
+  `;
+  currentRole = currentUser.role;
+  officerFilter = 'all';
+  const firstView = NAV_CONFIG[currentRole][0].id;
+  renderSidebar();
+  showView(firstView);
+}
+
+// ══════════ DATA ══════════
+const TYPES = {
+  'ไฟดับ':    { icon:'🔌', color:'#F59E0B' },
+  'ถนนชำรุด': { icon:'🛣️', color:'#6366F1' },
+  'น้ำท่วม':  { icon:'🌊', color:'#0EA5E9' },
+  'อุบัติเหตุ':{ icon:'🚗', color:'#EF4444' },
+  'อื่นๆ':    { icon:'📌', color:'#94A3B8' },
+};
+const STATUS_META = {
+  'รอดำเนินการ':    { cls:'status-pending',    label:'รอดำเนินการ',    steps:1 },
+  'กำลังดำเนินการ': { cls:'status-inprogress', label:'กำลังดำเนินการ', steps:2 },
+  'แก้ไขแล้ว':      { cls:'status-resolved',   label:'แก้ไขแล้ว',      steps:3 },
+};
+
+let reports = [
+  { id:'R001', type:'น้ำท่วม',   name:'สมชาย ใจดี',   phone:'081-234-5678', location:'ซอยลาดพร้าว 15', detail:'น้ำท่วมสูงประมาณ 30 ซม.', status:'กำลังดำเนินการ', date:'2026-06-25', image:null },
+  { id:'R002', type:'ถนนชำรุด',  name:'มาลี สุขใจ',   phone:'089-876-5432', location:'ถนนพหลโยธิน กม.12', detail:'หลุมขนาดใหญ่กลางถนน', status:'รอดำเนินการ', date:'2026-06-26', image:null },
+  { id:'R003', type:'ไฟดับ',     name:'วิชัย รัตนา',  phone:'062-111-2222', location:'หมู่ 5 ต.บางเขน', detail:'ไฟดับทั้งหมู่บ้านตั้งแต่ 18:00 น.', status:'แก้ไขแล้ว', date:'2026-06-22', image:null },
+  { id:'R004', type:'อุบัติเหตุ', name:'นิดา ทองดี',  phone:'064-333-4444', location:'แยกรัชดา-ลาดพร้าว', detail:'รถชนกัน 2 คัน มีผู้บาดเจ็บ', status:'แก้ไขแล้ว', date:'2026-06-20', image:null },
+  { id:'R005', type:'ไฟดับ',     name:'กมล ดีมาก',   phone:'098-555-6666', location:'ถนนเพชรบุรี 28', detail:'ไฟฟ้าขัดข้องบริเวณปากซอย', status:'รอดำเนินการ', date:'2026-06-28', image:null },
+  { id:'R006', type:'น้ำท่วม',   name:'อรุณ แสงทอง', phone:'083-777-8888', location:'ซอยอารีย์ 4', detail:'น้ำท่วมหลังฝนตกหนัก', status:'กำลังดำเนินการ', date:'2026-06-27', image:null },
+];
+
+let selectedType = '';
+let currentRole = 'citizen';
+let officerFilter = 'all';
+let activeView = 'view-report-form';
+let typeChartInst = null, monthChartInst = null;
+
+// ══════════ NAVIGATION ══════════
+const NAV_CONFIG = {
+  citizen: [
+    { id:'view-report-form', icon:'📨', label:'แจ้งเหตุฉุกเฉิน' },
+    { id:'view-track',       icon:'📋', label:'ติดตามสถานะ' },
+  ],
+  officer: [
+    { id:'view-officer-inbox', icon:'📥', label:'กล่องเหตุการณ์', badge:true },
+  ],
+  admin: [
+    { id:'view-admin-dashboard', icon:'📊', label:'Dashboard' },
+    { id:'view-admin-all',       icon:'📁', label:'เหตุทั้งหมด' },
+  ],
+};
+
+function renderSidebar() {
+  const pending = reports.filter(r => r.status === 'รอดำเนินการ').length;
+  const items = NAV_CONFIG[currentRole];
+  const roleCls = { citizen:'role-citizen', officer:'role-officer', admin:'role-admin' };
+  const nav = items.map(item => `
+    <button class="nav-item ${activeView === item.id ? 'active' : ''}" onclick="showView('${item.id}')">
+      <span class="nav-icon">${item.icon}</span>${item.label}
+      ${item.badge && pending > 0 ? `<span class="badge">${pending}</span>` : ''}
+    </button>`).join('');
+
+  const footer = currentUser ? `
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar" style="background:${currentUser.color}">${currentUser.avatar}</div>
+        <div>
+          <div class="sidebar-name">${currentUser.name}</div>
+          <div class="sidebar-role"><span class="user-role-badge ${roleCls[currentRole]}" style="padding:1px 6px;font-size:0.65rem">${ROLE_LABEL[currentRole]}</span></div>
+        </div>
+      </div>
+    </div>` : '';
+
+  document.getElementById('sidebar').innerHTML = `<div style="flex:1">${nav}</div>${footer}`;
+}
+
+function showView(id) {
+  activeView = id;
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  renderSidebar();
+  if (id === 'view-track') renderCitizenTrack();
+  if (id === 'view-officer-inbox') renderOfficerView();
+  if (id === 'view-admin-dashboard') renderAdminDash();
+  if (id === 'view-admin-all') renderAdminAll();
+}
+
+// ══════════ FORM ══════════
+function selectType(el, type) {
+  selectedType = type;
+  document.querySelectorAll('.type-chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function handleImages(e) {
+  const files = Array.from(e.target.files);
+  const preview = document.getElementById('uploadPreviews');
+  files.forEach(f => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = document.createElement('img');
+      img.src = ev.target.result; img.className = 'upload-preview-img';
+      preview.appendChild(img);
+    };
+    reader.readAsDataURL(f);
+  });
+}
+function submitReport() {
+  const name = document.getElementById('f-name').value.trim();
+  const phone = document.getElementById('f-phone').value.trim();
+  const location = document.getElementById('f-location').value.trim();
+  const detail = document.getElementById('f-detail').value.trim();
+  if (!selectedType || !name || !location || !detail) { showToast('⚠️ กรุณากรอกข้อมูลให้ครบถ้วน','info'); return; }
+  const id = 'R' + String(reports.length + 1).padStart(3,'0');
+  const today = new Date().toISOString().slice(0,10);
+  const imgs = document.querySelectorAll('.upload-preview-img');
+  const image = imgs.length > 0 ? imgs[0].src : null;
+  reports.unshift({ id, type:selectedType, name, phone, location, detail, status:'รอดำเนินการ', date:today, image });
+  showToast(`✅ แจ้งเหตุสำเร็จ! หมายเลข ${id}`,'success');
+  resetForm();
+}
+function resetForm() {
+  ['f-name','f-phone','f-location','f-detail'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('uploadPreviews').innerHTML = '';
+  document.getElementById('imageUpload').value = '';
+  selectedType = '';
+  document.querySelectorAll('.type-chip').forEach(c => c.classList.remove('selected'));
+}
+
+// ══════════ CITIZEN TRACK ══════════
+function renderCitizenTrack() {
+  const el = document.getElementById('citizenReportList');
+  if (!reports.length) { el.innerHTML='<div class="empty-state"><div class="icon">📭</div><h3>ยังไม่มีเหตุที่แจ้ง</h3></div>'; return; }
+  el.innerHTML = reports.map(r => {
+    const t = TYPES[r.type]; const s = STATUS_META[r.status];
+    const steps = [1,2,3].map(i => `<div class="progress-step ${i<s.steps?'done':i===s.steps?'active':''}"></div>`).join('');
+    return `<div class="report-card" onclick="openModal('${r.id}')">
+      <div class="report-type-icon" style="background:${t.color}22">${t.icon}</div>
+      <div class="report-info">
+        <div class="report-title">${r.type} — ${r.location}</div>
+        <div class="report-meta">${r.id} · ${r.date} · ${r.name}</div>
+        <div class="report-progress">
+          <div class="progress-steps">${steps}</div>
+          <div class="status-pill ${s.cls}"><span class="status-dot"></span>${s.label}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════ OFFICER ══════════
+function setOfficerFilter(f, el) {
+  officerFilter = f;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderOfficerView();
+}
+function renderOfficerView() {
+  const q = (document.getElementById('officerSearch')?.value||'').toLowerCase();
+  let list = reports;
+  if (officerFilter !== 'all') list = list.filter(r => r.status === officerFilter);
+  if (q) list = list.filter(r => `${r.type} ${r.location} ${r.name} ${r.detail}`.toLowerCase().includes(q));
+  const el = document.getElementById('officerList');
+  if (!list.length) { el.innerHTML='<div class="empty-state"><div class="icon">🔍</div><h3>ไม่พบเหตุการณ์</h3></div>'; return; }
+  el.innerHTML = list.map(r => {
+    const t = TYPES[r.type];
+    const cls = r.status==='รอดำเนินการ'?'pending':r.status==='กำลังดำเนินการ'?'inprogress':'resolved';
+    const s = STATUS_META[r.status];
+    return `<div class="officer-report-card ${cls}">
+      <span style="font-size:1.5rem">${t.icon}</span>
+      <div class="officer-info">
+        <div class="officer-title">${r.type} — ${r.location}</div>
+        <div class="officer-meta">${r.id} · ${r.name} · ${r.phone} · ${r.date}</div>
+      </div>
+      <div class="officer-actions">
+        <div class="status-pill ${s.cls}"><span class="status-dot"></span>${s.label}</div>
+        <select class="status-select" onchange="changeStatus('${r.id}',this.value)">
+          <option value="รอดำเนินการ" ${r.status==='รอดำเนินการ'?'selected':''}>รอดำเนินการ</option>
+          <option value="กำลังดำเนินการ" ${r.status==='กำลังดำเนินการ'?'selected':''}>กำลังดำเนินการ</option>
+          <option value="แก้ไขแล้ว" ${r.status==='แก้ไขแล้ว'?'selected':''}>แก้ไขแล้ว</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick="openModal('${r.id}')">ดูรายละเอียด</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function changeStatus(id, status) {
+  const r = reports.find(x => x.id===id);
+  if (r) { r.status=status; showToast(`🔄 ${id} → ${status}`,'success'); renderOfficerView(); renderSidebar(); }
+}
+
+// ══════════ ADMIN ══════════
+function renderAdminDash() {
+  const total=reports.length, pending=reports.filter(r=>r.status==='รอดำเนินการ').length,
+        inprog=reports.filter(r=>r.status==='กำลังดำเนินการ').length,
+        resolved=reports.filter(r=>r.status==='แก้ไขแล้ว').length;
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card total"><div class="stat-label">เหตุทั้งหมด</div><div class="stat-number">${total}</div><div class="stat-sub">ตั้งแต่เริ่มต้นระบบ</div></div>
+    <div class="stat-card pending"><div class="stat-label">รอดำเนินการ</div><div class="stat-number">${pending}</div><div class="stat-sub">ต้องรีบดำเนินการ</div></div>
+    <div class="stat-card inprogress"><div class="stat-label">กำลังดำเนินการ</div><div class="stat-number">${inprog}</div><div class="stat-sub">อยู่ระหว่างแก้ไข</div></div>
+    <div class="stat-card resolved"><div class="stat-label">แก้ไขแล้ว</div><div class="stat-number">${resolved}</div><div class="stat-sub">เสร็จสิ้น</div></div>`;
+
+  const typeCounts = {};
+  Object.keys(TYPES).forEach(k => typeCounts[k]=0);
+  reports.forEach(r => { if(typeCounts[r.type]!==undefined) typeCounts[r.type]++; });
+  if (typeChartInst) typeChartInst.destroy();
+  typeChartInst = new Chart(document.getElementById('typeChart'), {
+    type:'doughnut',
+    data:{ labels:Object.keys(typeCounts), datasets:[{ data:Object.values(typeCounts), backgroundColor:Object.values(TYPES).map(t=>t.color), borderColor:'#1E293B', borderWidth:3 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ color:'#94A3B8', font:{family:'Sarabun',size:12}, padding:10 } } } }
+  });
+
+  const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.'];
+  if (monthChartInst) monthChartInst.destroy();
+  monthChartInst = new Chart(document.getElementById('monthChart'), {
+    type:'bar',
+    data:{ labels:months, datasets:[{ label:'จำนวนเหตุ', data:[2,5,3,7,4,reports.length], backgroundColor:'rgba(245,158,11,0.7)', borderColor:'#F59E0B', borderWidth:2, borderRadius:6 }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      scales:{ x:{ticks:{color:'#94A3B8',font:{family:'Sarabun'}},grid:{color:'rgba(148,163,184,0.08)'}}, y:{ticks:{color:'#94A3B8',font:{family:'Sarabun'}},grid:{color:'rgba(148,163,184,0.08)'}} },
+      plugins:{ legend:{display:false} } }
+  });
+
+  document.getElementById('adminRecentList').innerHTML = reports.slice(0,5).map(r => {
+    const t=TYPES[r.type], s=STATUS_META[r.status];
+    const cls=r.status==='รอดำเนินการ'?'pending':r.status==='กำลังดำเนินการ'?'inprogress':'resolved';
+    return `<div class="officer-report-card ${cls}" style="margin-bottom:8px">
+      <span style="font-size:1.3rem">${t.icon}</span>
+      <div class="officer-info"><div class="officer-title">${r.type} — ${r.location}</div><div class="officer-meta">${r.id} · ${r.name} · ${r.date}</div></div>
+      <div class="status-pill ${s.cls}"><span class="status-dot"></span>${s.label}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderAdminAll() {
+  const q=(document.getElementById('adminSearch')?.value||'').toLowerCase();
+  let list = q ? reports.filter(r=>`${r.type} ${r.location} ${r.name} ${r.detail} ${r.id}`.toLowerCase().includes(q)) : reports;
+  const el = document.getElementById('adminAllList');
+  if (!list.length) { el.innerHTML='<div class="empty-state"><div class="icon">🔍</div><h3>ไม่พบข้อมูล</h3></div>'; return; }
+  el.innerHTML = list.map(r => {
+    const t=TYPES[r.type], cls=r.status==='รอดำเนินการ'?'pending':r.status==='กำลังดำเนินการ'?'inprogress':'resolved', s=STATUS_META[r.status];
+    return `<div class="officer-report-card ${cls}" style="max-width:100%">
+      <span style="font-size:1.4rem">${t.icon}</span>
+      <div class="officer-info"><div class="officer-title">${r.type} — ${r.location}</div><div class="officer-meta">${r.id} · ${r.name} · ${r.phone} · ${r.date}</div></div>
+      <div class="officer-actions">
+        <div class="status-pill ${s.cls}"><span class="status-dot"></span>${s.label}</div>
+        <select class="status-select" onchange="changeStatusAdmin('${r.id}',this.value)">
+          <option value="รอดำเนินการ" ${r.status==='รอดำเนินการ'?'selected':''}>รอดำเนินการ</option>
+          <option value="กำลังดำเนินการ" ${r.status==='กำลังดำเนินการ'?'selected':''}>กำลังดำเนินการ</option>
+          <option value="แก้ไขแล้ว" ${r.status==='แก้ไขแล้ว'?'selected':''}>แก้ไขแล้ว</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick="openModal('${r.id}')">ดู</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function changeStatusAdmin(id, status) {
+  const r=reports.find(x=>x.id===id);
+  if(r) { r.status=status; showToast(`🔄 ${id} → ${status}`,'success'); renderAdminAll(); }
+}
+
+// ══════════ MODAL ══════════
+function openModal(id) {
+  const r=reports.find(x=>x.id===id); if(!r) return;
+  const t=TYPES[r.type], s=STATUS_META[r.status];
+  document.getElementById('modalContent').innerHTML = `
+    <div class="modal-title">${t.icon} ${r.type}</div>
+    ${r.image?`<img src="${r.image}" class="modal-img" alt="ภาพประกอบ">`:''}
+    <div class="detail-row"><span class="detail-key">หมายเลข</span><span>${r.id}</span></div>
+    <div class="detail-row"><span class="detail-key">ผู้แจ้ง</span><span>${r.name}</span></div>
+    <div class="detail-row"><span class="detail-key">เบอร์โทร</span><span>${r.phone}</span></div>
+    <div class="detail-row"><span class="detail-key">สถานที่</span><span>${r.location}</span></div>
+    <div class="detail-row"><span class="detail-key">วันที่</span><span>${r.date}</span></div>
+    <div class="detail-row"><span class="detail-key">รายละเอียด</span><span>${r.detail}</span></div>
+    <div class="detail-row"><span class="detail-key">สถานะ</span><span class="status-pill ${s.cls}"><span class="status-dot"></span>${s.label}</span></div>
+    <div style="margin-top:18px;text-align:right"><button class="btn btn-ghost btn-sm" onclick="document.getElementById('modalOverlay').classList.remove('open')">ปิด</button></div>`;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal(e) { if(e.target===document.getElementById('modalOverlay')) document.getElementById('modalOverlay').classList.remove('open'); }
+
+// ══════════ TOAST ══════════
+function showToast(msg, type='info') {
+  const t=document.createElement('div'); t.className=`toast ${type}`; t.textContent=msg;
+  document.getElementById('toastContainer').appendChild(t);
+  setTimeout(() => { t.style.animation='slideOut 0.3s ease forwards'; setTimeout(()=>t.remove(),300); }, 3000);
+}
+</script>
+</body>
+</html>
